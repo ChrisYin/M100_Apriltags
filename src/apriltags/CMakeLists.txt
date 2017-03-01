@@ -66,7 +66,9 @@ target_link_libraries(apriltags ${catkin_LIBRARIES}
                                 ${Yaml_LIBRARIES}    
                                 ${apriltagscpp_LIBRARY})
 add_dependencies(apriltags ${PROJECT_NAME}_gencpp)
-
+add_executable(subscriber src/subscriber.cpp)
+target_link_libraries(subscriber ${catkin_LIBRARIES})
+add_dependencies(subscriber ${catkin_EXPORTED_TARGETS})
 install(TARGETS apriltags
   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION} 
 )
