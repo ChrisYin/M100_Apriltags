@@ -39,7 +39,8 @@ qtcreator-*
 /planning/cfg
 /planning/docs
 /planning/src
-
+.tar.gz
+.yaml
 *~
 
 # Emacs
