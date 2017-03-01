@@ -11,21 +11,23 @@
 void Cam_infoCallback(apriltags::AprilTagDetections msg)
 {
 	unsigned int id;
+	if(msg.flag==false)
+		{
+			ROS_INFO("BAD");
+		}
+		else
+		{
 	for(unsigned int i = 0; i < msg.detections.size(); ++i)
 	{
 		id = msg.detections[i].id;
-	//	if(!msg.detections[i].good)
-	//	{
-	//		ROS_INFO("BAD");
-	//	}
-	//	else
-	//	{
+		
 			geometry_msgs::Pose pose=msg.detections[i].pose;
 			ROS_INFO("Messages have been received successfully!~%d",id);
 			ROS_INFO("POSITION X: %f",pose.position.x);
 			ROS_INFO("POSITION Y: %f",pose.position.y);
-	//	}
+			ROS_INFO("POSITION Z: %f",pose.position.z);
 	}
+}
 
 }
 

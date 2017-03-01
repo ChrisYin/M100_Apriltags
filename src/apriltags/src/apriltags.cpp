@@ -302,7 +302,7 @@ void ImageCallback(const sensor_msgs::ImageConstPtr& msg)
     apriltags::AprilTagDetections apriltag_detections;
     apriltag_detections.header.frame_id = msg->header.frame_id;
     apriltag_detections.header.stamp = msg->header.stamp;
-
+    apriltag_detections.flag=false;
     cv_bridge::CvImagePtr subscribed_color_ptr;
     if ((viewer_) || (publish_detections_image_))
     {
@@ -325,6 +325,7 @@ void ImageCallback(const sensor_msgs::ImageConstPtr& msg)
 
     for(unsigned int i = 0; i < detections.size(); ++i)
     {
+			apriltag_detections.flag=true;
         // skip bad detections
         if(!detections[i].good)
         {
