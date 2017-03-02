@@ -1,5 +1,5 @@
 <launch>
-	<node pkg="dji_sdk" type="dji_sdk_node" name="dji_sdk" output="screen">
+<node pkg="dji_sdk" type="dji_sdk_node" name="dji_sdk" output="screen">
 		<!-- node parameters -->
 		<!-- For Drone Version enter M100 or A3_31 or A3_32 depending on your Flight Controller/Aircraft -->
                 <param name="drone_version" type="string" value="M100"/>
@@ -10,5 +10,37 @@
 		<param name="app_bundle_id" type="string" value="Welcome to use dji-sdk"/>
 		<param name="enc_key" type="string" value="c42f47355255ba61f03c364ed7df26b94e77505115f2c3312d4312cf9e90ad66"/>
 		<param name="groundstation_enable" type="int" value="1"/>
-	</node>
+		</node>
+     <node name="usb_cam" pkg="usb_cam" type="usb_cam_node" output="screen" >
+    <param name="video_device" value="/dev/video0" />
+    <param name="image_width" value="640" />
+    <param name="image_height" value="480" />
+    <param name="pixel_format" value="yuyv" />
+    <param name="camera_frame_id" value="usb_cam" />
+    <param name="io_method" value="mmap"/>
+  </node>
+ <node pkg="apriltags" type="apriltags" name="apriltags" output="screen">
+    <param name="~default_tag_size" value="0.17" />
+
+    <param name="~viewer" value="true" />
+    <param name="~publish_detections_image" value="false" />
+
+    <param name="~display_type" value="CUBE" />
+    <param name="~marker_thickness" value="0.02" />
+
+    <rosparam command="delete" param="tag_data" />
+    <rosparam param="tag_data">
+      "1": 
+        size: 0.17
+      "2":
+        size: 0.17
+    </rosparam>
+
+    <remap from="~image" to="/usb_cam/image_raw"/>
+    <remap from="~camera_info" to="/usb_cam/camera_info"/>
+    <remap from="~marker_array" to="/apriltags/marker_array"/>
+    <remap from="~detections" to="/apriltags/detections"/>
+  </node>
+
+
 </launch>

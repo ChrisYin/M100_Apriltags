@@ -325,7 +325,7 @@ void ImageCallback(const sensor_msgs::ImageConstPtr& msg)
 
     for(unsigned int i = 0; i < detections.size(); ++i)
     {
-			apriltag_detections.flag=true;
+	apriltag_detections.flag=true;
         // skip bad detections
         if(!detections[i].good)
         {

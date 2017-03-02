@@ -19,9 +19,20 @@
 #include <actionlib/client/simple_action_client.h>
 #include <actionlib/client/terminal_state.h>
 
+#include "std_msgs/String.h"
+#include "apriltags/AprilTagDetections.h"
+#include "apriltags/AprilTagDetection.h"
+#include <ros/forwards.h>
+#include <ros/single_subscriber_publisher.h>
+#include <sensor_msgs/Image.h>
+#include "math.h"
+//#include <Eigen/Core>
+//#include <Eigen/Geometry>
+
 using namespace DJI::onboardSDK;
 
 //! Function Prototypes for Mobile command callbacks - Core Functions
+void Cam_infoCallback(apriltags::AprilTagDetections msg);
 void ObtainControlMobileCallback(DJIDrone *drone);
 void ReleaseControlMobileCallback(DJIDrone *drone);
 void TakeOffMobileCallback(DJIDrone *drone);
@@ -79,10 +90,32 @@ static void Display_Main_Menu(void)
     printf("----------------------------------------\r\n");
 }
 
+float err_x; //need to subscribe from cam programe
+float err_sum_x = 0;
+float err_de_x = 0;
+float err_pre_x = 0;
+
+float err_y; //need to subscribe from cam programe
+float err_sum_y = 0;
+float err_de_y = 0;
+float err_pre_y = 0;
+
+float x_kp = 1;
+float x_ki = 0.01;
+float x_kd = 0.02;
+
+float y_kp = 1;
+float y_ki = 0.01;
+float y_kd = 0.02;
+
+float x_control_vel = 0;
+float y_control_vel = 0;
+
+short cam_cap_flag = 0;
    
 int main(int argc, char *argv[])
 {
-    int main_operate_code = 0;
+    //int main_operate_code = 0;
     int temp32;
     int circleRadius;
     int circleHeight;
@@ -143,579 +176,143 @@ int main(int argc, char *argv[])
     drone->setStartCollisionAvoidanceCallback(StartCollisionAvoidanceCallback, &userData);
     drone->setStopCollisionAvoidanceCallback(StopCollisionAvoidanceCallback, &userData);
 
+	ros::Subscriber sub = nh.subscribe("apriltags/detections",1, Cam_infoCallback);
+
 	
-    Display_Main_Menu();
+    //Display_Main_Menu();
+	
+ROS_INFO("OK");
+	
     while(1)
     {
-        ros::spinOnce();
-        std::cout << "Enter Input Val: ";
-        while(!(std::cin >> temp32)){
-        std::cin.clear();
-        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-        std::cout << "Invalid input.  Try again: ";
-	}
-
-        if(temp32>0 && temp32<38)
-        {
-            main_operate_code = temp32;         
-        }
-        else
-        {
-            printf("ERROR - Out of range Input \n");
-            Display_Main_Menu();
-            continue;
-        }
-        switch(main_operate_code)
-        {
-			case 1:
-				/* SDK version query*/
-				drone->check_version();
-				break;
-            case 2:
-                /* request control ability*/
-                drone->request_sdk_permission_control();
-                break;
-            case 3:
-                /* release control ability*/
-                drone->release_sdk_permission_control();
-                break;
-            case 4:
-                /* take off */
-                drone->takeoff();
-                //sleep(8);
-
-		//drone->attitude_control(0x40, 0, 2, 0, 0);
-                //sleep(1);
-
-                //drone->landing();
-
-                break;
-
-            case 5:
-                /* landing*/
-                drone->landing();
-                break;
-            case 6:
-                /* go home*/
-                drone->gohome();
-                break;
-            case 7:
-                /*gimbal test*/
-
-                drone->gimbal_angle_control(0, 0, 1800, 20);
-                sleep(2);
-                drone->gimbal_angle_control(0, 0, -1800, 20);
-                sleep(2);
-                drone->gimbal_angle_control(300, 0, 0, 20);
-                sleep(2);
-                drone->gimbal_angle_control(-300, 0, 0, 20);
-                sleep(2);
-                drone->gimbal_angle_control(0, 300, 0, 20);
-                sleep(2);
-                drone->gimbal_angle_control(0, -300, 0, 20);
-                sleep(2);
-                drone->gimbal_speed_control(100, 0, 0);
-                sleep(2);
-                drone->gimbal_speed_control(-100, 0, 0);
-                sleep(2);
-                drone->gimbal_speed_control(0, 0, 200);
-                sleep(2);
-                drone->gimbal_speed_control(0, 0, -200);
-                sleep(2);
-                drone->gimbal_speed_control(0, 200, 0);
-                sleep(2);
-                drone->gimbal_speed_control(0, -200, 0);
-                sleep(2);
-                drone->gimbal_angle_control(0, 0, 0, 20);
-                break;
-
-            case 8:
-                /* attitude control sample*/
-                drone->takeoff();
-                sleep(8);
-
-
-                for(int i = 0; i < 100; i ++)
-                {
-                    if(i < 90)
-                        drone->attitude_control(0x40, 0, 2, 0, 0);
-                    else
-                        drone->attitude_control(0x40, 0, 0, 0, 0);
-                    usleep(20000);
-                }
-                sleep(1);
-
-                for(int i = 0; i < 200; i ++)
-                {
-                    if(i < 180)
-                        drone->attitude_control(0x40, 2, 0, 0, 0);
-                    else
-                        drone->attitude_control(0x40, 0, 0, 0, 0);
-                    usleep(20000);
-                }
-                sleep(1);
-
-                for(int i = 0; i < 200; i ++)
-                {
-                    if(i < 180)
-                        drone->attitude_control(0x40, -2, 0, 0, 0);
-                    else
-                        drone->attitude_control(0x40, 0, 0, 0, 0);
-                    usleep(20000);
-                }
-                sleep(1);
-
-                for(int i = 0; i < 200; i ++)
-                {
-                    if(i < 180)
-                        drone->attitude_control(0x40, 0, 2, 0, 0);
-                    else
-                        drone->attitude_control(0x40, 0, 0, 0, 0);
-                    usleep(20000);
-                }
-                sleep(1);
-
-                for(int i = 0; i < 200; i ++)
-                {
-                    if(i < 180)
-                        drone->attitude_control(0x40, 0, -2, 0, 0);
-                    else
-                        drone->attitude_control(0x40, 0, 0, 0, 0);
-                    usleep(20000);
-                }
-                sleep(1);
-
-                for(int i = 0; i < 200; i ++)
-                {
-                    if(i < 180)
-                        drone->attitude_control(0x40, 0, 0, 0.5, 0);
-                    else
-                        drone->attitude_control(0x40, 0, 0, 0, 0);
-                    usleep(20000);
-                }
-                sleep(1);
-
-                for(int i = 0; i < 200; i ++)
-                {
-                    if(i < 180)
-                        drone->attitude_control(0x40, 0, 0, -0.5, 0);
-                    else
-                        drone->attitude_control(0x40, 0, 0, 0, 0);
-                    usleep(20000);
-                }
-                sleep(1);
-
-                for(int i = 0; i < 200; i ++)
-                {
-                    if(i < 180)
-                        drone->attitude_control(0xA, 0, 0, 0, 90);
-                    else
-                        drone->attitude_control(0xA, 0, 0, 0, 0);
-                    usleep(20000);
-                }
-                sleep(1);
-
-                for(int i = 0; i < 200; i ++)
-                {
-                    if(i < 180)
-                        drone->attitude_control(0xA, 0, 0, 0, -90);
-                    else
-                        drone->attitude_control(0xA, 0, 0, 0, 0);
-                    usleep(20000);
-                }
-                sleep(1);
-
-                drone->landing();
-
-                break;
-
-            case 9:
-                /*draw circle sample*/
-                static float R = 2;
-                static float V = 2;
-                static float x;
-                static float y;
-                Phi = 0;
-                std::cout<<"Enter the radius of the circle in meteres (10m > x > 4m)\n";
-                std::cin>>circleRadius;   
-
-                std::cout<<"Enter height in meteres (Relative to take off point. 15m > x > 5m) \n";
-                std::cin>>circleHeight;  
-
-                 if (circleHeight < 5)
-                {
-                    circleHeight = 5;
-                }
-                else if (circleHeight > 15)
-                {
-                    circleHeight = 15;
-                }           
-                if (circleRadius < 4)
-                {
-                    circleRadius = 4;
-                }
-                else if (circleRadius > 10)
-                {
-                    circleRadius = 10;
-                } 
-		
-                x_center = drone->local_position.x;
-                y_center = drone->local_position.y;
-                circleRadiusIncrements = 0.01;
-		
-    		    for(int j = 0; j < 1000; j ++)
-                {   
-                  if (circleRadiusIncrements < circleRadius)
-    			   {
-    		        x =  x_center + circleRadiusIncrements;
-    		        y =  y_center;
-    			    circleRadiusIncrements = circleRadiusIncrements + 0.01;
-    		        drone->local_position_control(x ,y ,circleHeight, 0);
-    		        usleep(20000);
-    			  }
-                   else
-    			   {
-                    break;
-                   }
-                }
-
-                /* start to draw circle */
-                for(int i = 0; i < 1890; i ++)
-                {   
-                    x =  x_center + circleRadius*cos((Phi/300));
-                    y =  y_center + circleRadius*sin((Phi/300));
-                    Phi = Phi+1;
-                    drone->local_position_control(x ,y ,circleHeight, 0);
-                    usleep(20000);
-                }
-                break;
-
-            case 10:
-                /*draw square sample*/
-                for(int i = 0;i < 60;i++)
-                {
-                    drone->attitude_control( Flight::HorizontalLogic::HORIZONTAL_POSITION |
-                            Flight::VerticalLogic::VERTICAL_VELOCITY |
-                            Flight::YawLogic::YAW_ANGLE |
-                            Flight::HorizontalCoordinate::HORIZONTAL_BODY |
-                            Flight::SmoothMode::SMOOTH_ENABLE,
-                            3, 3, 0, 0 );
-                    usleep(20000);
-                }
-                for(int i = 0;i < 60;i++)
-                {
-                    drone->attitude_control( Flight::HorizontalLogic::HORIZONTAL_POSITION |
-                            Flight::VerticalLogic::VERTICAL_VELOCITY |
-                            Flight::YawLogic::YAW_ANGLE |
-                            Flight::HorizontalCoordinate::HORIZONTAL_BODY |
-                            Flight::SmoothMode::SMOOTH_ENABLE,
-                            -3, 3, 0, 0);
-                    usleep(20000);
-                }
-                for(int i = 0;i < 60;i++)
-                {
-                    drone->attitude_control( Flight::HorizontalLogic::HORIZONTAL_POSITION |
-                            Flight::VerticalLogic::VERTICAL_VELOCITY |
-                            Flight::YawLogic::YAW_ANGLE |
-                            Flight::HorizontalCoordinate::HORIZONTAL_BODY |
-                            Flight::SmoothMode::SMOOTH_ENABLE,
-                            -3, -3, 0, 0);
-                    usleep(20000);
-                }
-                for(int i = 0;i < 60;i++)
-                {
-                    drone->attitude_control( Flight::HorizontalLogic::HORIZONTAL_POSITION |
-                            Flight::VerticalLogic::VERTICAL_VELOCITY |
-                            Flight::YawLogic::YAW_ANGLE |
-                            Flight::HorizontalCoordinate::HORIZONTAL_BODY |
-                            Flight::SmoothMode::SMOOTH_ENABLE,
-                            3, -3, 0, 0);
-                    usleep(20000);
-                }
-                break;
-            case 11:
-                /*take a picture*/
-                drone->take_picture();
-                break;
-            case 12:
-                /*start video*/
-                drone->start_video();
-                break;
-            case 13:
-                /*stop video*/
-                drone->stop_video();
-                break;
-            case 14:
-                /* Local Navi Test */
-                drone->local_position_navigation_send_request(-100, -100, 100);
-                break;
-            case 15:
-                /* GPS Navi Test */
-                drone->global_position_navigation_send_request(22.5420, 113.9580, 10);
-                break;
-            case 16:
-                /* Waypoint List Navi Test */
-                {
-                    waypoint0.latitude = 22.535;
-                    waypoint0.longitude = 113.95;
-                    waypoint0.altitude = 100;
-                    waypoint0.staytime = 5;
-                    waypoint0.heading = 0;
-                }
-                newWaypointList.waypoint_list.push_back(waypoint0);
-
-                {
-                    waypoint1.latitude = 22.535;
-                    waypoint1.longitude = 113.96;
-                    waypoint1.altitude = 100;
-                    waypoint1.staytime = 0;
-                    waypoint1.heading = 90;
-                }
-                newWaypointList.waypoint_list.push_back(waypoint1);
-
-                {
-                    waypoint2.latitude = 22.545;
-                    waypoint2.longitude = 113.96;
-                    waypoint2.altitude = 100;
-                    waypoint2.staytime = 4;
-                    waypoint2.heading = -90;
-                }
-                newWaypointList.waypoint_list.push_back(waypoint2);
-
-                {
-                    waypoint3.latitude = 22.545;
-                    waypoint3.longitude = 113.96;
-                    waypoint3.altitude = 10;
-                    waypoint3.staytime = 2;
-                    waypoint3.heading = 180;
-                }
-                newWaypointList.waypoint_list.push_back(waypoint3);
-
-                {
-                    waypoint4.latitude = 22.525;
-                    waypoint4.longitude = 113.93;
-                    waypoint4.altitude = 50;
-                    waypoint4.staytime = 0;
-                    waypoint4.heading = -180;
-                }
-                newWaypointList.waypoint_list.push_back(waypoint4);
-
-                drone->waypoint_navigation_send_request(newWaypointList);
-                break;
-			case 17:
-				//drone arm
-				drone->drone_arm();
-                break;
-			case 18:
-				//drone disarm
-				drone->drone_disarm();
-                break;
-			case 19:
-				//virtual rc test 1: arm & disarm
-				drone->virtual_rc_enable();
+        		ros::spinOnce();
+			drone->request_sdk_permission_control();
+			//drone->gimbal_angle_control(0, 0, 0, 20);
+                	sleep(1);
+			drone->takeoff();
+                	sleep(3);
+			//sleep(1);
+			//while(!cam_cap_flag)
+				//drone->velocity_control(0,0.1,0,0,0);
+			while(!cam_cap_flag)
+			{
+				drone->velocity_control(0, 0.15, 0, 0, 0);
 				usleep(20000);
-
-				virtual_rc_data[0] = 1024;	//0-> roll     	[1024-660,1024+660] 
-				virtual_rc_data[1] = 1024;	//1-> pitch    	[1024-660,1024+660]
-				virtual_rc_data[2] = 1024+660;	//2-> throttle 	[1024-660,1024+660]
-				virtual_rc_data[3] = 1024;	//3-> yaw      	[1024-660,1024+660]
-				virtual_rc_data[4] = 1684;	 	//4-> gear		{1684(UP), 1324(DOWN)}
-				virtual_rc_data[6] = 1552;    	//6-> mode     	{1552(P), 1024(A), 496(F)}
-
-				for (int i = 0; i < 100; i++){
-					drone->virtual_rc_control(virtual_rc_data);
-					usleep(20000);
-				}
-
-				//virtual rc test 2: yaw 
-				drone->virtual_rc_enable();
-				virtual_rc_data[0] = 1024;		//0-> roll     	[1024-660,1024+660] 
-				virtual_rc_data[1] = 1024;		//1-> pitch    	[1024-660,1024+660]
-				virtual_rc_data[2] = 1024-200;	//2-> throttle 	[1024-660,1024+660]
-				virtual_rc_data[3] = 1024;		//3-> yaw      	[1024-660,1024+660]
-				virtual_rc_data[4] = 1324;	 	//4-> gear		{1684(UP), 1324(DOWN)}
-				virtual_rc_data[6] = 1552;    	//6-> mode     	{1552(P), 1024(A), 496(F)}
-
-				for(int i = 0; i < 100; i++) {
-					drone->virtual_rc_control(virtual_rc_data);
-					usleep(20000);
-				}
-				drone->virtual_rc_disable();
-				break;
-			case 20:
-				//sync flag
-				drone->sync_flag_control(1);
-				break;
-			case 21:
-				//set msg frequency
-				drone->set_message_frequency(msg_frequency_data);
-				break;
-
-			case 22:
-
-                // Clear the vector of previous waypoints 
-                waypoint_task.mission_waypoint.clear();
-                
-				//mission waypoint upload
-				waypoint_task.velocity_range = 10;
-				waypoint_task.idle_velocity = 3;
-				waypoint_task.action_on_finish = 0;
-				waypoint_task.mission_exec_times = 1;
-				waypoint_task.yaw_mode = 4;
-				waypoint_task.trace_mode = 0;
-				waypoint_task.action_on_rc_lost = 0;
-				waypoint_task.gimbal_pitch_mode = 0;
-
-                static int num_waypoints = 4; 
-                static int altitude = 80;
-                // Currently hard coded, should be dynamic
-                static float orig_lat = 22.5401;
-                static float orig_long = 113.9468;
-                for(int i = 0; i < num_waypoints; i++)
-                {
-                    
-                    // Careens in zig-zag pattern
-    				waypoint.latitude = (orig_lat+=.0001);
-                    if (i % 2 == 1){
-    				    waypoint.longitude = orig_long+=.0001;
-                    } else {
-    				    waypoint.longitude = orig_long;
-                    }
-    				waypoint.altitude = altitude-=10;
-    				waypoint.damping_distance = 0;
-    				waypoint.target_yaw = 0;
-    				waypoint.target_gimbal_pitch = 0;
-    				waypoint.turn_mode = 0;
-    				waypoint.has_action = 0;
-    				/*
-    				waypoint.action_time_limit = 10;
-    				waypoint.waypoint_action.action_repeat = 1;
-    				waypoint.waypoint_action.command_list[0] = 1;
-    				waypoint.waypoint_action.command_parameter[0] = 1;
-    				*/
-    
-    				waypoint_task.mission_waypoint.push_back(waypoint);
-                } 
-                
-                /* 
-
-				waypoint.latitude = 22.540015;
-				waypoint.longitude = 113.94659;
-				waypoint.altitude = 120;
-				waypoint.damping_distance = 2;
-				waypoint.target_yaw = 180;
-				waypoint.target_gimbal_pitch = 0;
-				waypoint.turn_mode = 0;
-				waypoint.has_action = 0;
-				waypoint.action_time_limit = 10;
-				waypoint.waypoint_action.action_repeat = 1;
-				waypoint.waypoint_action.command_list[0] = 1;
-				waypoint.waypoint_action.command_list[1] = 1;
-				waypoint.waypoint_action.command_parameter[0] = 1;
-				waypoint.waypoint_action.command_parameter[1] = 1;
-
-
-				waypoint_task.mission_waypoint.push_back(waypoint);
-
-                */
-
-				drone->mission_waypoint_upload(waypoint_task);
-				break;
-			case 23:
-				//mission hotpoint upload
-				hotpoint_task.latitude = 22.542813;
-				hotpoint_task.longitude = 113.958902;
-				hotpoint_task.altitude = 20;
-				hotpoint_task.radius = 10;
-				hotpoint_task.angular_speed = 10;
-				hotpoint_task.is_clockwise = 0;
-				hotpoint_task.start_point = 0;
-				hotpoint_task.yaw_mode = 0;
-
-				drone->mission_hotpoint_upload(hotpoint_task);
-				break;
-			case 24:
-				//mission followme upload
-				followme_task.mode = 0;
-				followme_task.yaw_mode = 0;
-				followme_task.initial_latitude = 23.540091;
-				followme_task.initial_longitude = 113.946593;
-				followme_task.initial_altitude = 10;
-				followme_task.sensitivity = 1;
-
-				drone->mission_followme_upload(followme_task);
-				break;
-			case 25:
-				//mission start
-				drone->mission_start();
-				break;
-			case 26:
-				//mission pause
-				drone->mission_pause();
-				break;
-			case 27:
-				//mission resume
-				drone->mission_resume();
-				break;
-			case 28:
-				//mission cancel
-				drone->mission_cancel();
-				break;
-			case 29:
-				//waypoint mission download
-				waypoint_task = drone->mission_waypoint_download();
-				break;
-			case 30:
-				//mission waypoint set speed
-				drone->mission_waypoint_set_speed((float)5);
-				break;
-			case 31:
-				//mission waypoint get speed
-				printf("%f", drone->mission_waypoint_get_speed());
-				break;
-			case 32:
-				//mission hotpoint set speed
-				drone->mission_hotpoint_set_speed((float)5,(uint8_t)1);
-				break;
-			case 33:
-				//mission hotpoint set radius
-				drone->mission_hotpoint_set_radius((float)5);
-				break;
-			case 34:
-				//mission hotpoint reset yaw
-				drone->mission_hotpoint_reset_yaw();
-				break;
-			case 35:
-				//mission followme update target
-				for (int i = 0; i < 20; i++)
+				drone->gimbal_angle_control(0, 300, 0, 20);
+				ros::spinOnce();
+				usleep(20000);
+			} 
+			int count_stable_flag = 0;
+			while(cam_cap_flag)
+			{
+				
+				drone->gimbal_angle_control(0, -900, 0, 20);
+				usleep(20000);
+				//ROS_INFO("ERROR X: %f",err_x);
+				//ROS_INFO("ERROR Y: %f",err_y);
+				if(fabs(err_x) < 0.05 && fabs(err_y) < 0.05)
 				{
-					followme_target.latitude = 22.540091 + i*0.000001;
-					followme_target.longitude = 113.946593 + i*0.000001;
-					followme_target.altitude = 100;
-					drone->mission_followme_update_target(followme_target);
-					usleep(20000);
+					drone->attitude_control(0x40, 0, 0, 0, 0);
+					count_stable_flag++;
+					sleep(1);
+					if(count_stable_flag == 5)
+					{
+						drone->landing();
+						break;
+					}		
 				}
-				break;
-            case 37:
-                printf("Mobile Data Commands mode entered. Use OSDK Mobile App to use this feature \n");
-                printf("End program to exit this mode \n");
-                while(1)
-                {             
-                ros::spinOnce();  
-                }
-			case 36:
-				hotpoint_task = drone->mission_hotpoint_download();
+				else
+				{
+					err_de_x = err_x - err_pre_x;
+					err_sum_x += err_x; 
+					err_pre_x = err_x;
 
-            default:
-                break;
-        }
-        main_operate_code = -1;
-        Display_Main_Menu();
+					err_de_y = err_y - err_pre_y;
+					err_sum_y += err_y; 
+					err_pre_y = err_y;
+
+					if(err_sum_x>10)
+						err_sum_x = 10;
+					if(err_sum_x<-10)
+						err_sum_x = -10;
+
+					if(err_sum_y>10)
+						err_sum_y = 10;
+					if(err_sum_y<-10)
+						err_sum_y = -10;
+		
+					x_control_vel = x_kp * err_x + x_ki * err_sum_x + x_kd * err_de_x ;
+					y_control_vel = y_kp * err_y + y_ki * err_sum_y + y_kd * err_de_y ;
+					
+					if(x_control_vel>0.2)
+						x_control_vel = 0.2;
+					if(y_control_vel>0.2)
+						y_control_vel = 0.2;
+					if(x_control_vel<-0.2)
+						x_control_vel = -0.2;
+					if(y_control_vel<-0.2)
+						y_control_vel = -0.2;
+					
+						
+					drone->velocity_control(0,x_control_vel,y_control_vel,0,0);
+					usleep(20000);
+					//ROS_INFO("err_x: %f",err_x);
+					//ROS_INFO("err_y: %f",err_y);
+					ROS_INFO("velocity_x: %f",x_control_vel);
+					ROS_INFO("velocity_y: %f",y_control_vel);
+					//printf("current control velocity x: %f\n", x_control_vel);
+					//printf("current control velocity y: %f\n", y_control_vel);
+				}
+				ros::spinOnce();
+				/*if(cam_cap_flag == true)
+				ROS_INFO("cap_cam_flag is true");
+				else if(cam_cap_flag == false)
+				ROS_INFO("cap_cam_flag is false");*/
+			}     
+        //main_operate_code = -1;
+        //Display_Main_Menu();
     }
     return 0;
 }
 
 //! Callback functions for Mobile Commands
+bool temp666=true;
+void Cam_infoCallback(apriltags::AprilTagDetections msg)
+{
+	unsigned int id;
+	if(msg.flag==false)
+		{
+			if(temp666!=msg.flag)
+			{
+				ROS_INFO("BAD");
+				temp666=false;	
+				cam_cap_flag = msg.flag;
+			}
+		}
+		else
+		{
+			for(unsigned int i = 0; i < msg.detections.size(); ++i)
+			{
+				if(temp666!=msg.flag)
+				{
+					ROS_INFO("GOOD");
+					temp666=true;
+				}
+				id = msg.detections[i].id;
+		
+					geometry_msgs::Pose pose=msg.detections[i].pose;
+					//ROS_INFO("Messages have been received successfully!~%d",id);
+					//ROS_INFO("POSITION X: %f",pose.position.x);
+					//ROS_INFO("POSITION Y: %f",pose.position.y);
+					//ROS_INFO("POSITION Z: %f",pose.position.z);
+					err_x = pose.position.y;			
+					err_y = -pose.position.x;
+			
+					cam_cap_flag = msg.flag;
+			}
+		}
+
+}
     void ObtainControlMobileCallback(DJIDrone *drone)
     {
       drone->request_sdk_permission_control();
