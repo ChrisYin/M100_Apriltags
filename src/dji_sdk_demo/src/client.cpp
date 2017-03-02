@@ -112,6 +112,8 @@ float x_control_vel = 0;
 float y_control_vel = 0;
 
 short cam_cap_flag = 0;
+
+static unsigned int id = 0;
    
 int main(int argc, char *argv[])
 {
@@ -181,7 +183,7 @@ int main(int argc, char *argv[])
 	
     //Display_Main_Menu();
 	
-ROS_INFO("OK");
+//ROS_INFO("OK");
 	
     while(1)
     {
@@ -196,78 +198,118 @@ ROS_INFO("OK");
 				//drone->velocity_control(0,0.1,0,0,0);
 			while(!cam_cap_flag)
 			{
-				drone->velocity_control(0, 0.15, 0, 0, 0);
-				usleep(20000);
-				drone->gimbal_angle_control(0, 300, 0, 20);
+				if(id == 0)
+				{
+					drone->velocity_control(0, 0.15, 0, 0, 0);
+					usleep(20000);
+				}
+				if(id == 6)
+				{
+					drone->velocity_control(0,0,0.2,0,0);
+					usleep(20000);
+				}
+				if(id == 5)
+				{
+					drone->velocity_control(0,0,0,0,0);
+					usleep(20000);
+				}
 				ros::spinOnce();
 				usleep(20000);
+				ROS_INFO("id: %d",int(id));
 			} 
 			int count_stable_flag = 0;
+			int land_point = 0;
 			while(cam_cap_flag)
 			{
-				
-				drone->gimbal_angle_control(0, -900, 0, 20);
-				usleep(20000);
+				//drone->gimbal_angle_control(0, -900, 0, 20);
+				//usleep(20000);
 				//ROS_INFO("ERROR X: %f",err_x);
 				//ROS_INFO("ERROR Y: %f",err_y);
-				if(fabs(err_x) < 0.05 && fabs(err_y) < 0.05)
+				switch(id)
 				{
-					drone->attitude_control(0x40, 0, 0, 0, 0);
-					count_stable_flag++;
-					sleep(1);
-					if(count_stable_flag == 5)
-					{
-						drone->landing();
-						break;
-					}		
-				}
-				else
-				{
-					err_de_x = err_x - err_pre_x;
-					err_sum_x += err_x; 
-					err_pre_x = err_x;
+					case 5:
+						drone->gimbal_angle_control(0, -900, 0, 20);
+						land_point = 1;
+						while(land_point == 1)
+						{
+							if(fabs(err_x) < 0.04 && fabs(err_y) < 0.04)
+							{
+								drone->attitude_control(0x40, 0, 0, 0, 0);
+								count_stable_flag++;
+								sleep(1);
+								if(count_stable_flag == 5)
+								{
+									drone->landing();
+									break;
+								}		
+							}
+							else
+							{
+								err_de_x = err_x - err_pre_x;
+								err_sum_x += err_x; 
+								err_pre_x = err_x;
 
-					err_de_y = err_y - err_pre_y;
-					err_sum_y += err_y; 
-					err_pre_y = err_y;
+								err_de_y = err_y - err_pre_y;
+								err_sum_y += err_y; 
+								err_pre_y = err_y;
 
-					if(err_sum_x>10)
-						err_sum_x = 10;
-					if(err_sum_x<-10)
-						err_sum_x = -10;
+								if(err_sum_x>10)
+									err_sum_x = 10;
+								if(err_sum_x<-10)
+									err_sum_x = -10;
 
-					if(err_sum_y>10)
-						err_sum_y = 10;
-					if(err_sum_y<-10)
-						err_sum_y = -10;
+								if(err_sum_y>10)
+									err_sum_y = 10;
+								if(err_sum_y<-10)
+									err_sum_y = -10;
 		
-					x_control_vel = x_kp * err_x + x_ki * err_sum_x + x_kd * err_de_x ;
-					y_control_vel = y_kp * err_y + y_ki * err_sum_y + y_kd * err_de_y ;
+								x_control_vel = x_kp * err_x + x_ki * err_sum_x + x_kd * err_de_x ;
+								y_control_vel = y_kp * err_y + y_ki * err_sum_y + y_kd * err_de_y ;
 					
-					if(x_control_vel>0.2)
-						x_control_vel = 0.2;
-					if(y_control_vel>0.2)
-						y_control_vel = 0.2;
-					if(x_control_vel<-0.2)
-						x_control_vel = -0.2;
-					if(y_control_vel<-0.2)
-						y_control_vel = -0.2;
+								if(x_control_vel>0.2)
+									x_control_vel = 0.2;
+								if(y_control_vel>0.2)
+									y_control_vel = 0.2;
+								if(x_control_vel<-0.2)
+									x_control_vel = -0.2;
+								if(y_control_vel<-0.2)
+									y_control_vel = -0.2;
 					
 						
-					drone->velocity_control(0,x_control_vel,y_control_vel,0,0);
-					usleep(20000);
-					//ROS_INFO("err_x: %f",err_x);
-					//ROS_INFO("err_y: %f",err_y);
-					ROS_INFO("velocity_x: %f",x_control_vel);
-					ROS_INFO("velocity_y: %f",y_control_vel);
-					//printf("current control velocity x: %f\n", x_control_vel);
-					//printf("current control velocity y: %f\n", y_control_vel);
+								drone->velocity_control(0,x_control_vel,y_control_vel,0,0);
+								ROS_INFO("id: %d",int(id));
+								usleep(20000);
+								//ROS_INFO("err_x: %f",err_x);
+								//ROS_INFO("err_y: %f",err_y);
+								//ROS_INFO("velocity_x: %f",x_control_vel);
+								//ROS_INFO("velocity_y: %f",y_control_vel);
+								//printf("current control velocity x: %f\n", x_control_vel);
+								//printf("current control velocity y: %f\n", y_control_vel);
+							}
+							ros::spinOnce();
+						}
+						
+					case 6:
+						drone->gimbal_angle_control(0, 300, 0, 20);
+						for(int i = 0;i<100;i++)
+						{
+							drone->velocity_control(0,0,0,0.15,0);
+							usleep(20000);
+						}
+						for(int j = 0;j<100;j++)
+						{
+							drone->velocity_control(0,0,0.2,0,0);
+							usleep(20000);
+						}
+						ros::spinOnce();
+						break;
+					default:
+						break;
 				}
-				ros::spinOnce();
-				/*if(cam_cap_flag == true)
-				ROS_INFO("cap_cam_flag is true");
-				else if(cam_cap_flag == false)
-				ROS_INFO("cap_cam_flag is false");*/
+					/*if(cam_cap_flag == true)
+					ROS_INFO("cap_cam_flag is true");
+					else if(cam_cap_flag == false)
+					ROS_INFO("cap_cam_flag is false");*/
 			}     
         //main_operate_code = -1;
         //Display_Main_Menu();
@@ -279,7 +321,6 @@ ROS_INFO("OK");
 bool temp666=true;
 void Cam_infoCallback(apriltags::AprilTagDetections msg)
 {
-	unsigned int id;
 	if(msg.flag==false)
 		{
 			if(temp666!=msg.flag)
@@ -287,6 +328,8 @@ void Cam_infoCallback(apriltags::AprilTagDetections msg)
 				ROS_INFO("BAD");
 				temp666=false;	
 				cam_cap_flag = msg.flag;
+				for(unsigned int i = 0; i < msg.detections.size(); ++i)
+				id = msg.detections[i].id;
 			}
 		}
 		else
